@@ -84,10 +84,10 @@ module user_proj_example #(
     wire [31:0] la_write;
 
     // WB MI A
-    assign valid = wbs_cyc_i && wbs_stb_i; 
-    assign wstrb = wbs_sel_i & {4{wbs_we_i}};
+    assign valid     = wbs_cyc_i && wbs_stb_i; 
+    assign wstrb     = wbs_sel_i & {4{wbs_we_i}};
     assign wbs_dat_o = rdata;
-    assign wdata = wbs_dat_i;
+    assign wdata     = wbs_dat_i;
 
     // IO
     assign io_out = count;
