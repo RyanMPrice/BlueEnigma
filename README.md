@@ -5,8 +5,12 @@
 | :exclamation: Important Note            |
 |-----------------------------------------|
 
-## Please fill in your project documentation in this README.md file 
+This project implements a couple of blocks to test and understand the Open Synthesis capabilities. 
 
-Refer to [README](docs/source/quickstart.rst) for a quick start of how to use caravel_user_project
+The first block is a simple educational cpu designed around an 8 bit bus.
 
-Refer to [README](docs/source/index.rst) for this sample project documentation. 
+The second block is a PWM peripheral for that cpu.
+
+The third is a digital block for a simple analog functional block to come in a later submission. 
+
+This is all integrated with the Caravel harness such that programming of the cpu may happen.
