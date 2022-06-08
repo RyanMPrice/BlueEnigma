@@ -11,6 +11,6 @@ The first block is a simple educational cpu designed around an 8 bit bus.
 
 The second block is a PWM peripheral for that cpu.
 
-The third is a digital block for a simple analog functional block to come in a later submission. 
+The third is a GPIO block. 
 
 This is all integrated with the Caravel harness such that programming of the cpu may happen.

@@ -22,7 +22,12 @@ set ::env(DESIGN_NAME) user_proj_example
 
 set ::env(VERILOG_FILES) "\
 	$::env(CARAVEL_ROOT)/verilog/rtl/defines.v \
-	$script_dir/../../verilog/rtl/user_proj_example.v"
+     $script_dir/../../verilog/rtl/MinxCpu.v \
+     $script_dir/../../verilog/rtl/PwmIO.v \
+     $script_dir/../../verilog/rtl/GPIO.v \
+     $script_dir/../../verilog/rtl/AsyncRam.v \
+     $script_dir/../../verilog/rtl/ProgMem.v \
+	$script_dir/../../verilog/rtl/user_proj_example.v "
 
 set ::env(DESIGN_IS_CORE) 0
 
@@ -31,7 +36,7 @@ set ::env(CLOCK_NET) "counter.clk"
 set ::env(CLOCK_PERIOD) "10"
 
 set ::env(FP_SIZING) absolute
-set ::env(DIE_AREA) "0 0 900 600"
+set ::env(DIE_AREA) "0 0 1000 1000"
 
 set ::env(FP_PIN_ORDER_CFG) $script_dir/pin_order.cfg
 
