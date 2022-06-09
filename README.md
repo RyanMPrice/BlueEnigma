@@ -14,3 +14,5 @@ The second block is a PWM peripheral for that cpu.
 The third is a GPIO block. 
 
 This is all integrated with the Caravel harness such that programming of the cpu may happen.
+
+All projects start with the first steps.. a small crawl... then into a walk.. then into a running start.
