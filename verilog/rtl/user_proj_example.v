@@ -68,6 +68,42 @@ module user_proj_example #(
     // IRQ
     output [2:0] irq
 );
+    
+    wire [7:0] inAddress, inRom, inRam, inPage, inValue;
+    wire       masterWrite, writeRom, writeRam, writePage;
+    wire [7:0] user_abus, user_dfor;
+    wire       user_romce  = (user_abus[7:6] == 2'b00);
+    wire       user_ramce  = (user_abus[7:6] == 2'b01);
+    wire       user_paegce = (user_abus[7:6] == 2'b10);
+    wire       user_ioce   = (user_abus[7:6] == 2'b11);
+    wire [3:0] user_masce  = {user_romce, user_ramce, user_pagece, user_ioce};
+    
+    wire [7:0] user_rom, user_ram, user_page;
+    wire [7:0] user_dback = (user_romce) ? user_rom   : 
+                            (user_ramce) ? user_ram   : 
+                            (user_pagce) ? user_page  : 
+                            (user_ioce)  ? user_iobus : 8'h00;
+    
+    wire [2:0] pstate;
+    wire [7:0] regR0, regR1, regR2, regR3;
+    wire       pwmA_q0, pwmA_n0;
+    wire       pwmB_q0, pwmB_n0;
+    wire       pwmC_q0, pwmC_n0;
+    wire [7:0] user_gpio_in, user_gpio_en, user_gpio_out;
+    wire [7:0] user_ioGPIO;
+    wire [7:0] user_ioPWMA;
+    wire [7:0] user_ioPWMB;
+    wire [7:0] user_ioPWMC;
+    wire       user_ioGPIOce = (user_abus[5:4] == 2'b00);
+    wire       user_ioPWMAce = (user_abus[5:4] == 2'b01);
+    wire       user_ioPWMBce = (user_abus[5:4] == 2'b10);
+    wire       user_ioPWMCce = (user_abus[5:4] == 2'b11);
+    wire [3:0] user_iomasce  = {user_ioGPIOce, user_ioPWMAce, user_ioPWMBce, user_ioPWMCce};
+    wire [7:0] user_iobus    = (user_ioGPIOce) ? user_ioGPIO: 
+                               (user_ioPWMAce) ? user_ioPWMA: 
+                               (user_ioPWMBce) ? user_ioPWMB: 
+                               (user_ioPWMCce) ? user_ioPWMC: 8'h00;
+    
     wire clk;
     wire rst;
 
@@ -75,13 +111,8 @@ module user_proj_example #(
     wire [`MPRJ_IO_PADS-1:0] io_out;
     wire [`MPRJ_IO_PADS-1:0] io_oeb;
 
-    wire [31:0] rdata; 
-    wire [31:0] wdata;
-    wire [BITS-1:0] count;
-
     wire valid;
     wire [3:0] wstrb;
-    wire [31:0] la_write;
 
     // WB MI A
     assign valid     = wbs_cyc_i && wbs_stb_i; 
@@ -90,76 +121,132 @@ module user_proj_example #(
     assign wdata     = wbs_dat_i;
 
     // IO
-    assign io_out = count;
-    assign io_oeb = {(`MPRJ_IO_PADS-1){rst}};
+    assign io_out = {user_gpio_out, pwmA_q0, pwmB_q0, pwmC_q0, pwmA_n0, pwmB_qn, pwmC_n0, user_halt, {(`MPRJ_IO_PADS-1-8-6-1){1'b0}}};
+    assign io_oeb = {user_gpio_en,  {(`MPRJ_IO_PADS-1-8){rst}}};
 
     // IRQ
     assign irq = 3'b000;	// Unused
-
+    
     // LA
-    assign la_data_out = {{(127-BITS){1'b0}}, count};
+    assign la_data_out = {0, pstate, regR0, regR1, regR2, regR3, user_halt, user_gpio_out, user_rd, user_wr, user_abus, user_dfor, user_dback, user_masce, user_iomasce, 1'b0, masterWrite, clk, rst, inRom, inRam, inPage};
     // Assuming LA probes [63:32] are for controlling the count register  
-    assign la_write = ~la_oenb[63:32] & ~{BITS{valid}};
-    // Assuming LA probes [65:64] are for controlling the count clk & reset  
-    assign clk = (~la_oenb[64]) ? la_data_in[64]: wb_clk_i;
-    assign rst = (~la_oenb[65]) ? la_data_in[65]: wb_rst_i;
-
-    counter #(
-        .BITS(BITS)
-    ) counter(
-        .clk(clk),
-        .reset(rst),
-        .ready(wbs_ack_o),
-        .valid(valid),
-        .rdata(rdata),
-        .wdata(wbs_dat_i),
-        .wstrb(wstrb),
-        .la_write(la_write),
-        .la_input(la_data_in[63:32]),
-        .count(count)
+    
+    assign         clk =  (~la_oenb[0])  ? la_data_in[0]     : wb_clk_i;
+    assign         rst =  (~la_oenb[1])  ? la_data_in[1]     : wb_rst_i;
+    assign masterWrite =  (~la_oenb[2])  ? la_data_in[2]     : 1'b0;
+    assign writePage   =  (~la_oenb[3])  ? la_data_in[3]     : 1'b0;
+    assign writeRam    =  (~la_oenb[4])  ? la_data_in[4]     : 1'b0;
+    assign writeRom    =  (~la_oenb[5])  ? la_data_in[5]     : 1'b0;
+    assign inValue     = ~la_oenb[15:7]  ? la_data_in[15:7]  : 8'h00;
+    assign inAddress   = ~la_oenb[23:16] ? la_data_in[23:16] : 8'h00;
+    
+    MinxTop processor (
+      .clk(clk)
+    , .clr(rst)
+    , .pstate(pstate)
+    , .regR0(regR0)
+    , .regR1(regR1)
+    , .regR2(regR2)
+    , .regR3(regR3)
+    , .abus(user_abus)
+    , .dbuso(user_dfor)
+    , .dbusi(user_dback)
+    , .rd(user_rd)
+    , .wr(user_wr)
+    , .sig_halt(user_halt)
+    );
+    
+    rom_unit #(6, 8) ROM (
+      .address(user_abus)
+    , .dbuso(user_rom)
+    
+    , .clk(clk)
+    , .addressw(inAddress)
+    , .dbusr(inRom)
+    , .dbusw(inValue)
+    , .we(writeRom)
+    );
+    
+    ram_unit #(6, 8) RAM (
+      .clk(clk)
+    , .address(user_abus)
+    , .dbuso(user_ram)
+    , .dbusi(user_dfor)
+    , .ce(user_ramce)
+    , .we(user_wr)
+    
+    , .iaddress(inAddress)
+    , .idbuso(inRam)
+    , .idbusi(inValue)
+    , .ice(masterWrite)
+    , .iwe(writePage)
+    );
+    
+    ram_unit #(6, 8) RAM (
+      .clk(clk)
+    , .address(user_abus)
+    , .dbuso(user_ram)
+    , .dbusi(user_dfor)
+    , .ce(user_pagece)
+    , .we(user_wr)
+    
+    , .iaddress(inAddress)
+    , .idbuso(inPage)
+    , .idbusi(inValue)
+    , .ice(masterWrite)
+    , .iwe(writeRam)
+    );
+    
+    pwm pmodA (
+      .clk(clk)
+    , .rst(rst)
+    , .address(user_abus[2:0])
+    , .databi(user_dfor)
+    , .databo(user_ioPWMA)
+    , .cen(pwm_ioPWMAce)
+    , .wr(user_wr)
+    , .q0(pwmA_q0)
+    , .n0(pwmA_n0)
     );
 
-endmodule
+    pwm pmodB (
+      .clk(clk)
+    , .rst(rst)
+    , .address(user_abus[2:0])
+    , .databi(user_dfor)
+    , .databo(user_ioPWMB)
+    , .cen(pwm_ioPWMBce)
+    , .wr(user_wr)
+    , .q0(pwmB_q0)
+    , .n0(pwmB_n0)
+    );
 
-module counter #(
-    parameter BITS = 32
-)(
-    input clk,
-    input reset,
-    input valid,
-    input [3:0] wstrb,
-    input [BITS-1:0] wdata,
-    input [BITS-1:0] la_write,
-    input [BITS-1:0] la_input,
-    output ready,
-    output [BITS-1:0] rdata,
-    output [BITS-1:0] count
-);
-    reg ready;
-    reg [BITS-1:0] count;
-    reg [BITS-1:0] rdata;
-
-    always @(posedge clk) begin
-        if (reset) begin
-            count <= 0;
-            ready <= 0;
-        end else begin
-            ready <= 1'b0;
-            if (~|la_write) begin
-                count <= count + 1;
-            end
-            if (valid && !ready) begin
-                ready <= 1'b1;
-                rdata <= count;
-                if (wstrb[0]) count[7:0]   <= wdata[7:0];
-                if (wstrb[1]) count[15:8]  <= wdata[15:8];
-                if (wstrb[2]) count[23:16] <= wdata[23:16];
-                if (wstrb[3]) count[31:24] <= wdata[31:24];
-            end else if (|la_write) begin
-                count <= la_write & la_input;
-            end
-        end
-    end
-
+    pwm pmodC (
+      .clk(clk)
+    , .rst(rst)
+    , .address(user_abus[2:0])
+    , .databi(user_dfor)
+    , .databo(user_ioPWMC)
+    , .cen(pwm_ioPWMCce)
+    , .wr(user_wr)
+    , .q0(pwmC_q0)
+    , .n0(pwmC_n0)
+    );
+    
+    GPIO gpioblock (
+      .clk(clk)
+    , .rst(rst)
+    
+    , .address(user_address[1:0])
+    , .databi(user_dfor)
+    , .databo(user_ioGPIO)
+    , .cen(user_ioGPIOce)
+    
+    , .wr(user_wr)
+    , .port_in (user_gpio_in)
+    , .port_en (user_gpio_en)
+    , .port_out(user_gpio_out)
+    );
+    
 endmodule
 `default_nettype wire

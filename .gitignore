@@ -5,3 +5,6 @@ precheck_results
 *.gtkw
 mgmt_core_wrapper/
 caravel/
+openlane/Makefile
+*.def
+*.mag

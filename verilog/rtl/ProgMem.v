@@ -1,5 +1,5 @@
 
-module ram_unit 
+module rom_unit 
   #( 
     parameter A = 8
   , parameter D = 8
@@ -9,6 +9,7 @@ module ram_unit
 
 , input                 clk
 , input       [A - 1:0] addressw
+, output wire [D - 1:0] dbusr
 , input  wire [D - 1:0] dbusw
 , input                 we
 );
@@ -17,6 +18,7 @@ module ram_unit
   reg [D - 1:0] memory [memory_size - 1:0];
 
   assign dbuso = memory[address];
+  assign dbusr = memory[addressw];
   
   always @ (posedge clk)
     if(we)
